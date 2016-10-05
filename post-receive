@@ -1,0 +1,35 @@
+#!/bin/bash
+# switch DEBUG to ON for more log info
+DEBUG=OFF
+LOG=/home/git/logs/post-receive-hook.log
+JOBNAME=todolist-build
+function debug {
+	if [ "${DEBUG}" == "ON" ]; then
+		echo $* >> ${LOG}
+	fi
+}
+# tidy the log file
+if [ -f ${LOG} ]; then
+	if [ `cat ${LOG} | wc -c` -gt 10485760 ]; then
+		rm -rf ${LOG}
+	fi
+else
+	`touch ${LOG}`
+fi
+# if it is a tag ref we don't want to trigger a build
+DO_NOTHING=false
+while read oldref newref refname
+do
+	debug "${oldref} ${newref} ${refname}"
+	TAGS=$(echo ${refname} | cut -d "/" -f 2)
+	if [ "${TAGS}" == "tags" ]; then
+		DO_NOTHING=true
+	fi
+	debug "inside loop DO_NOTHING=${DO_NOTHING}"
+done
+debug "outside loop DO_NOTHING=${DO_NOTHING}"
+if [ "${DO_NOTHING}" == "false" ]; then
+	echo "Trigerring build ${JOBNAME}" >>${LOG}
+	curl --user neil:sysygy -s http://jenkins.server:8080/job/${JOBNAME}/build?token=88888888
+#	curl -s http://jenkins.server:8080/job/${JOBNAME}/build?token=88888888
+fi
